@@ -15,3 +15,12 @@ services:
       --tls-ca-cert-file /tls/redis.crt
       --tls-auth-clients no
     restart: always
+
+  my-app:
+    build:
+      context: ../app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    # This ensures the container restarts if it crashes
+    restart: always
