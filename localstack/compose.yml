@@ -1,0 +1,17 @@
+services:
+  redis:
+    image: redis:8.4.0-alpine
+    container_name: redis-ssl
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./cache/certs:/tls
+    command: >
+      redis-server
+      --tls-port 6379
+      --port 0
+      --tls-cert-file /tls/redis.crt
+      --tls-key-file /tls/redis.key
+      --tls-ca-cert-file /tls/redis.crt
+      --tls-auth-clients no
+    restart: always
