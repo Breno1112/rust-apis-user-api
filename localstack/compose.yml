@@ -5,7 +5,7 @@ services:
       context: ./certs
       dockerfile: Dockerfile
     volumes:
-      - ./certs/output:/certs
+      - certs_data:/certs
 
   redis:
     image: redis:8.4.0-alpine
@@ -13,7 +13,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - ./certs/output:/tls:ro
+      - certs_data:/tls:ro
     depends_on:
       generate-certs:
         condition: service_completed_successfully
@@ -51,9 +51,12 @@ services:
         condition: service_completed_successfully
     volumes:
       - ../app:/usr/src/app
-      - ./certs/output:/usr/src/app/certs
+      - certs_data:/usr/src/app/certs
     environment:
       - SSL_KEY_PATH=/usr/src/app/certs/user-api-key.pem
       - SSL_CERT_PATH=/usr/src/app/certs/user-api-cert.pem
     # This ensures the container restarts if it crashes
     restart: always
+
+volumes:
+  certs_data:
