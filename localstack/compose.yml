@@ -45,10 +45,15 @@ services:
       dockerfile: Dockerfile_dev
     ports:
       - "8080:8080"
-    volumes:
-      - ../app:/usr/src/app
+      - "8081:8081"
     depends_on:
       generate-certs:
         condition: service_completed_successfully
+    volumes:
+      - ../app:/usr/src/app
+      - ./certs/output:/usr/src/app/certs
+    environment:
+      - SSL_KEY_PATH=/usr/src/app/certs/user-api-key.pem
+      - SSL_CERT_PATH=/usr/src/app/certs/user-api-cert.pem
     # This ensures the container restarts if it crashes
     restart: always

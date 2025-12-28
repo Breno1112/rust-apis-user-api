@@ -10,7 +10,7 @@ API de usuários simples em container que é capaz de se comunicar com mongoDB e
 * Endpoint de remoção de usuários
 
 * Tudo feito em containers
-* API expondo endpoints em SSL
-* Container non-keepalive que apenas gera os certificados para o MongoDB, o Redis e a API.
-* Os 3 certificados devem ser diferentes
+* API expondo endpoints em SSL OK
+* Container non-keepalive que apenas gera os certificados para o MongoDB, o Redis e a API. OK
+* Os 3 certificados devem ser diferentes OK
 * A API deve confiar nos certificados do Redis e do MongoDB
