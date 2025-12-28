@@ -1,0 +1,19 @@
+FROM rust:1.92-bookworm AS watcher
+
+# 1. Create a workspace and set the working directory
+WORKDIR /usr/src/app
+
+# 2. Pre-build dependencies only (to leverage Docker layer caching)
+# This prevents re-downloading crates unless Cargo.toml/lock change.
+
+# COPY Cargo.toml Cargo.lock ./
+# RUN mkdir src
+
+# 3. Copy the actual source code and build the final binary
+
+# COPY src ./src
+
+RUN cargo install cargo-watch
+# RUN cargo watch -x check -x run
+
+CMD ["cargo", "watch", "-x", "check", "-x", "run"]

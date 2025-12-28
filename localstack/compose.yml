@@ -16,11 +16,22 @@ services:
       --tls-auth-clients no
     restart: always
 
-  my-app:
+  # user-api-release:
+  #   build:
+  #     context: ../app
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8080:8080"
+  #   # This ensures the container restarts if it crashes
+  #   restart: always
+
+  user-api-dev:
     build:
       context: ../app
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile_dev
     ports:
       - "8080:8080"
+    volumes:
+      - ../app:/usr/src/app
     # This ensures the container restarts if it crashes
     restart: always
