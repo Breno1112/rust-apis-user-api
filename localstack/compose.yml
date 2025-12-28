@@ -1,18 +1,29 @@
 services:
+
+  generate-certs:
+    build:
+      context: ./certs
+      dockerfile: Dockerfile
+    volumes:
+      - ./certs/output:/certs
+
   redis:
     image: redis:8.4.0-alpine
     container_name: redis-ssl
     ports:
       - "6379:6379"
     volumes:
-      - ./cache/certs:/tls
+      - ./certs/output:/tls:ro
+    depends_on:
+      generate-certs:
+        condition: service_completed_successfully
     command: >
       redis-server
       --tls-port 6379
       --port 0
-      --tls-cert-file /tls/redis.crt
-      --tls-key-file /tls/redis.key
-      --tls-ca-cert-file /tls/redis.crt
+      --tls-cert-file /tls/redis-cert.pem
+      --tls-key-file /tls/redis-key.pem
+      --tls-ca-cert-file /tls/root-cert.pem
       --tls-auth-clients no
     restart: always
 
@@ -22,6 +33,9 @@ services:
   #     dockerfile: Dockerfile
   #   ports:
   #     - "8080:8080"
+  #   depends_on:
+  #     generate-certs:
+  #       condition: service_completed_successfully
   #   # This ensures the container restarts if it crashes
   #   restart: always
 
@@ -33,5 +47,8 @@ services:
       - "8080:8080"
     volumes:
       - ../app:/usr/src/app
+    depends_on:
+      generate-certs:
+        condition: service_completed_successfully
     # This ensures the container restarts if it crashes
     restart: always
