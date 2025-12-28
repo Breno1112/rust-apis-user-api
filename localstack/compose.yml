@@ -58,5 +58,23 @@ services:
     # This ensures the container restarts if it crashes
     restart: always
 
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb-tls
+    volumes:
+      - certs_data:/etc/ssl/mongo:ro
+    depends_on:
+      generate-certs:
+        condition: service_completed_successfully
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    command: >
+      mongod --tlsMode requireTLS
+      --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem
+      --tlsCAFile /etc/ssl/mongo/root-cert.pem
+    ports:
+      - "27017:27017"
+
 volumes:
   certs_data:
