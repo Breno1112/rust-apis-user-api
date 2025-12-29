@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct NotFound {
+pub struct SampleMessage {
     pub message: String
 }

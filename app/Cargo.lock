@@ -970,6 +970,7 @@ dependencies = [
  "actix-web",
  "deadpool-redis",
  "env_logger",
+ "log",
  "mongodb",
  "openssl",
  "redis",

@@ -2,8 +2,9 @@ use actix_web::{HttpResponse, Responder, delete, get, post, put, web::{self, Jso
 use deadpool_redis::Pool;
 use mongodb::{Client, bson::doc};
 use redis::AsyncCommands;
+use log::{ info, error };
 
-use crate::{domain::{entities::mongodb::user_entity::UserEntity, objects::{request::user::{CreateUserRequest, UpdateUserRequest}, response::{common::NotFound, user::{UpdateUserResponse, UserResponse}}}}, mappers::user_mapper::{from_create_user_request_to_user_entity, from_user_entity_to_create_user_response, from_user_entity_to_user_response}};
+use crate::{domain::{entities::mongodb::user_entity::UserEntity, objects::{request::user::{CreateUserRequest, UpdateUserRequest}, response::{common::SampleMessage, user::{UpdateUserResponse, UserResponse}}}}, mappers::user_mapper::{from_create_user_request_to_user_entity, from_user_entity_to_create_user_response, from_user_entity_to_user_response}};
 
 #[post("")]
 async fn create_user(
@@ -19,10 +20,10 @@ async fn create_user(
                 if let Ok(serialized_object) = serde_json::to_string(&user_entity) {
                     match conn.set_ex::<_, _, ()>(&user_entity.username, serialized_object, 60).await {
                         Ok(_) => {
-                            println!("User {} updated on redis db", &user_entity.username);
+                            info!("User {} updated on redis db", &user_entity.username);
                         }
                         Err(e) => {
-                            println!("Error when updating redis cluster: {}", e);
+                            error!("Error when updating redis cluster: {}", e);
                         }
                     }
                 }
@@ -30,7 +31,7 @@ async fn create_user(
             HttpResponse::Created().json(from_user_entity_to_create_user_response(user_entity))
         }
         Err(e) => {
-            println!("Error when inserting user. Error is {}", e.to_string());
+            error!("Error when inserting user. Error is {}", e.to_string());
             HttpResponse::InternalServerError().finish()
         }
     }
@@ -49,7 +50,7 @@ async fn delete_user(
             HttpResponse::Ok().body("OK")
         }
         Err(e) => {
-            println!("Error when deleting user. Error is {}", e.to_string());
+            error!("Error when deleting user. Error is {}", e.to_string());
             HttpResponse::InternalServerError().finish()
         }
     }
@@ -69,14 +70,14 @@ async fn get_user(
         // because the key might not exist in Redis.
         match conn.get::<_, Option<String>>(&id).await {
             Ok(Some(user_json)) => {
-                println!("Redis Cache Hit! {}", user_json);
+                info!("Redis Cache Hit! {}", user_json);
                 if let Ok(user_entity) = serde_json::from_str::<UserEntity>(&user_json) {
-                    println!("returning data from redis cache");
+                    info!("returning data from redis cache");
                     return HttpResponse::Ok().json(from_user_entity_to_user_response(user_entity));
                 }
             }
-            Ok(None) => println!("Redis Cache Miss"),
-            Err(e) => println!("Redis Get ERROR: {}", e),
+            Ok(None) => info!("Redis Cache Miss"),
+            Err(e) => error!("Redis Get ERROR: {}", e),
         }
     }
 
@@ -86,10 +87,10 @@ async fn get_user(
             HttpResponse::Ok().json(from_user_entity_to_user_response(user))
         }
         Ok(None) => {
-            HttpResponse::NotFound().json(NotFound{ message: format!("User {} not found!", id)})
+            HttpResponse::NotFound().json(SampleMessage{ message: format!("User {} not found!", id)})
         }
         Err(e) => {
-            println!("Error when finding user. Error is {}", e.to_string());
+            error!("Error when finding user. Error is {}", e.to_string());
             HttpResponse::InternalServerError().finish()
         }
     }
@@ -124,11 +125,11 @@ async fn update_user(
                     }
                 })
             } else {
-                HttpResponse::NotFound().json(NotFound{ message: format!("User {} not found!", id)})
+                HttpResponse::NotFound().json(SampleMessage{ message: format!("User {} not found!", id)})
             }
         }
         Err(e) => {
-            println!("Error when updating user. Error is {}", e.to_string());
+            error!("Error when updating user. Error is {}", e.to_string());
             HttpResponse::InternalServerError().finish()
         }
     }
