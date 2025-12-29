@@ -2,6 +2,7 @@ use std::fmt::format;
 
 use log::error;
 use mongodb::bson::Document;
+use mongodb::error::{ErrorKind, WriteFailure};
 use mongodb::{Client, Collection};
 use mongodb::{bson::doc};
 
@@ -29,8 +30,20 @@ impl UserRepository {
                 Ok(user_entity)
             }
             Err(e) => {
-                error!("Error when inserting user {}. The error is {}", e, user_entity.username);
-                Err(DatabaseException{message: "Error creating user".to_string(), kind: DatabaseExceptionType::UnknownError})
+                match *e.kind {
+                    ErrorKind::Write(WriteFailure::WriteError(ref write_error)) => {
+                        if write_error.code == 11000 {
+                            Err(DatabaseException{message: "Error creating user".to_string(), kind: DatabaseExceptionType::EntityAlreadyExists})
+                        } else {
+                            error!("Error when inserting user {}. The error is {}", user_entity.username, e);
+                            Err(DatabaseException{message: "Error creating user".to_string(), kind: DatabaseExceptionType::UnknownError})    
+                        }
+                    }
+                    _ => {
+                        error!("Error when inserting user {}. The error is {}", user_entity.username, e);
+                        Err(DatabaseException{message: "Error creating user".to_string(), kind: DatabaseExceptionType::UnknownError})
+                    }
+                }
             }
         }
     }
