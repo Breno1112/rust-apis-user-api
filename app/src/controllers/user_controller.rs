@@ -1,5 +1,7 @@
 use actix_web::{HttpResponse, Responder, delete, get, post, put, web::{self, Json}};
+use deadpool_redis::Pool;
 use mongodb::{Client, bson::doc};
+use redis::AsyncCommands;
 
 use crate::{domain::{entities::mongodb::user_entity::UserEntity, objects::{request::user::{CreateUserRequest, UpdateUserRequest}, response::{common::NotFound, user::{UpdateUserResponse, UserResponse}}}}, mappers::user_mapper::{from_create_user_request_to_user_entity, from_user_entity_to_create_user_response, from_user_entity_to_user_response}};
 
@@ -43,10 +45,26 @@ async fn delete_user(
 #[get("/{user_id}")]
 async fn get_user(
     mongo_client: web::Data<Client>,
+    redis_connection_pool: web::Data<Pool>,
     path: web::Path<String>
 ) -> impl Responder {
     let collection = mongo_client.database("fachinis").collection::<UserEntity>("users");
     let id = path.into_inner();
+
+    if let Ok(mut conn) = redis_connection_pool.get().await {
+        // We specify the type for redis_result as Option<String>
+        // because the key might not exist in Redis.
+        match conn.get::<_, Option<String>>(&id).await {
+            Ok(Some(user_json)) => {
+                println!("Redis Cache Hit! {}", user_json);
+                // If you were storing JSON, you could return it here:
+                // return HttpResponse::Ok().body(user_json);
+            }
+            Ok(None) => println!("Redis Cache Miss"),
+            Err(e) => println!("Redis Get ERROR: {}", e),
+        }
+    }
+
     let filter = doc! {"_id": &id};
     match collection.find_one(filter).await {
         Ok(Some(user)) => {
