@@ -1,0 +1,5 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1767047336056,280,POST /v1/user,201,Created,Thread Group 1-1,text,true,,178,239,1,1,https://user-api-release:8081/v1/user,276,0,239
+1767047336337,3,GET /v1/user,200,OK,Thread Group 1-1,text,true,,175,170,1,1,https://user-api-release:8081/v1/user/Breno1112,2,0,0
+1767047336341,7,PUT /v1/user,200,OK,Thread Group 1-1,text,true,,200,226,1,1,https://user-api-release:8081/v1/user/Breno1112,6,0,4
+1767047336348,7,DELETE /v1/user,200,OK,Thread Group 1-1,text,true,,164,192,1,1,https://user-api-release:8081/v1/user/Breno1112,7,0,6

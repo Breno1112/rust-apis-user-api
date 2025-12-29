@@ -155,5 +155,30 @@ services:
   #     retries: 5
   #     start_period: 10s
 
+
+  jmeter:
+    image: alpine/jmeter:latest
+    container_name: jmeter
+    user: root # Required to import the certificate into the Java keystore
+    volumes:
+      - ../performance/tests:/tests
+      - ../performance/results:/results
+      - certs_data:/certs:ro
+    depends_on:
+      user-api-release:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo $JAVA_HOME/lib/security/cacerts
+        # Import Root CA into Java KeyStore so JMeter trusts the API
+        keytool -import -trustcacerts -keystore /usr/lib/jvm/default-jvm/jre/lib/security/cacerts \
+                -storepass changeit -noprompt -alias custom-ca -file /certs/root-cert.pem
+        
+        # Run JMeter test
+        jmeter -n -t /tests/user-api-test.jmx -l /results/result.jtl -e -o /results/report
+        # - |
+        #   tail -f /dev/null
+
 volumes:
   certs_data:
