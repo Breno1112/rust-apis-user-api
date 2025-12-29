@@ -97,7 +97,7 @@ services:
     restart: always
     healthcheck:
       test: >
-        curl -kv https://localhost/v1/healthcheck/status
+        curl -kv https://localhost:8081/v1/healthcheck/status
       interval: 5s
       timeout: 5s
       retries: 5
