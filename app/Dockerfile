@@ -26,6 +26,7 @@ FROM debian:bookworm-slim
 # Install minimal runtime dependencies (SSL is often needed for web APIs)
 RUN apt-get update && apt-get install -y \
     ca-certificates \
+    curl \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
