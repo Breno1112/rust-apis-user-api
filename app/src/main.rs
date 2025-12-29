@@ -9,7 +9,7 @@ mod mappers;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let ssl_context = config::generate_ssl_context();
-    let redis_pool = web::Data::new(db::redis::connect_redis().await.unwrap());
+    let redis_pool = web::Data::new(db::redis::connect_redis().await);
     let mongo_client = web::Data::new(db::mongodb::create_mongo_client().await);
 
     if ssl_context.is_some() {
