@@ -8,3 +8,16 @@ actix-web = { version = "4", features = ["openssl"] }
 openssl = { version = "0.10" }
 serde = "1.0.228"
 serde_json = "1.0.145"
+tokio = { version = "1", features = ["full"] }
+
+# Redis with TLS and Pooling
+# tokio-rustls-comp is required for your manual cert loading code
+redis = { version = "0.25", features = ["tokio-comp", "tokio-rustls-comp"] }
+deadpool-redis = "0.14"
+
+# MongoDB
+mongodb = "3.4.1"
+
+# Utilities for Certificate Parsing
+rustls = "0.21"
+rustls-pemfile = "1.0"

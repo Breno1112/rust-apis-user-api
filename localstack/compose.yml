@@ -7,7 +7,7 @@ services:
     volumes:
       - certs_data:/certs
 
-  redis:
+  redis-ssl:
     image: redis:8.4.0-alpine
     container_name: redis-ssl
     ports:
@@ -26,6 +26,34 @@ services:
       --tls-ca-cert-file /tls/root-cert.pem
       --tls-auth-clients no
     restart: always
+
+  mongodb-tls:
+    image: mongo:latest
+    container_name: mongodb-tls
+    volumes:
+      - certs_data:/etc/ssl/mongo:ro
+    depends_on:
+      generate-certs:
+        condition: service_completed_successfully
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    command: >
+      mongod --tlsMode requireTLS
+      --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem
+      --tlsCAFile /etc/ssl/mongo/root-cert.pem
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: >
+        mongosh --tls 
+        --tlsCAFile /etc/ssl/mongo/root-cert.pem 
+        --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem 
+        --eval "db.adminCommand('ping')"
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # user-api-release:
   #   build:
@@ -49,32 +77,23 @@ services:
     depends_on:
       generate-certs:
         condition: service_completed_successfully
+      # mongodb-tls:
+      #   condition: service_healthy
+      
     volumes:
       - ../app:/usr/src/app
       - certs_data:/usr/src/app/certs
     environment:
       - SSL_KEY_PATH=/usr/src/app/certs/user-api-key.pem
       - SSL_CERT_PATH=/usr/src/app/certs/user-api-cert.pem
+      - SSL_ROOT_CERT_PATH=/usr/src/app/certs/root-cert.pem
+      - REDIS_URL=rediss://redis:6379
+      - MONGODB_URL=mongodb://mongodb:27017
+      - MONGODB_CERT_PATH=/usr/src/app/certs/root-cert.pem
+      - MONGODB_USERNAME=admin
+      - MONGODB_PASSWORD=password
     # This ensures the container restarts if it crashes
     restart: always
-
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb-tls
-    volumes:
-      - certs_data:/etc/ssl/mongo:ro
-    depends_on:
-      generate-certs:
-        condition: service_completed_successfully
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password
-    command: >
-      mongod --tlsMode requireTLS
-      --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem
-      --tlsCAFile /etc/ssl/mongo/root-cert.pem
-    ports:
-      - "27017:27017"
 
 volumes:
   certs_data:
