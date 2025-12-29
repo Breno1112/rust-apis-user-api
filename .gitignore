@@ -2,3 +2,4 @@
 
 /app/target
 /localstack/certs/output
+/performance/results/*
