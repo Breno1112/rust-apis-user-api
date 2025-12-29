@@ -1,4 +1,4 @@
-use actix_web::{App, HttpServer, web};
+use actix_web::{App, HttpServer, middleware::Logger, web};
 
 mod controllers;
 mod config;
@@ -12,11 +12,14 @@ async fn main() -> std::io::Result<()> {
     let redis_pool = web::Data::new(db::redis::connect_redis().await);
     let mongo_client = web::Data::new(db::mongodb::create_mongo_client().await);
 
+    env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
+
     if ssl_context.is_some() {
         HttpServer::new(move || {
-        App::new()
-        .app_data(redis_pool.clone())
-        .app_data(mongo_client.clone())
+            App::new()
+                .wrap(Logger::new("\nIP: %a\nUser-Agent: %{User-Agent}i\nStatusCode: %s\nTotal time(ms): %D"))
+                .app_data(redis_pool.clone())
+            .app_data(mongo_client.clone())
             .configure(controllers::init)
         })
         .bind_openssl(("0.0.0.0", 8081), ssl_context.unwrap())?
@@ -25,6 +28,7 @@ async fn main() -> std::io::Result<()> {
     } else {
         HttpServer::new(move || {
         App::new()
+            .wrap(Logger::new("\nIP: %a\nUser-Agent: %{User-Agent}i\nStatusCode: %s\nTotal time(ms): %D"))
             .app_data(redis_pool.clone())
             .app_data(mongo_client.clone())
             .configure(controllers::init)

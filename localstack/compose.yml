@@ -45,16 +45,16 @@ services:
       --tlsAllowConnectionsWithoutCertificates
     ports:
       - "27017:27017"
-    # healthcheck:
-    #   test: >
-    #     mongosh --tls 
-    #     --tlsCAFile /etc/ssl/mongo/root-cert.pem 
-    #     --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem 
-    #     --eval "db.adminCommand('ping')"
-    #   interval: 5s
-    #   timeout: 5s
-    #   retries: 5
-    #   start_period: 10s
+    healthcheck:
+      test: >
+        mongosh --tls 
+        --tlsCAFile /etc/ssl/mongo/root-cert.pem 
+        --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem 
+        --eval "db.adminCommand('ping')"
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # user-api-release:
   #   build:
@@ -78,8 +78,8 @@ services:
     depends_on:
       generate-certs:
         condition: service_completed_successfully
-      # mongodb-tls:
-      #   condition: service_healthy
+      mongodb:
+        condition: service_healthy
       
     volumes:
       - ../app:/usr/src/app
@@ -95,6 +95,13 @@ services:
       - MONGODB_PASSWORD=password
     # This ensures the container restarts if it crashes
     restart: always
+    healthcheck:
+      test: >
+        curl -kv https://localhost/v1/healthcheck/status
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   certs_data:
