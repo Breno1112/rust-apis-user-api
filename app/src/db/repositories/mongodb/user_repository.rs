@@ -18,7 +18,7 @@ pub struct UserRepository {
 }
 
 impl UserRepository {
-    pub fn new(client: &Client) -> Self {
+    pub fn new(client: Client) -> Self {
         let collection = client.database(DATABASE).collection::<UserEntity>(USER_COLLECTION);
         UserRepository { collection }
     }

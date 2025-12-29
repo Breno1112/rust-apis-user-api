@@ -1,6 +1,6 @@
 use actix_web::{App, HttpServer, middleware::Logger, web};
 
-use crate::db::repositories::mongodb::user_repository::UserRepository;
+use crate::db::repositories::{mongodb::user_repository::UserRepository, redis::user_repository};
 
 mod controllers;
 mod config;
@@ -12,8 +12,9 @@ mod mappers;
 async fn main() -> std::io::Result<()> {
     let ssl_context = config::generate_ssl_context();
     let mongo_client = db::mongodb::create_mongo_client().await;
-    let redis_pool = web::Data::new(db::redis::connect_redis().await);
-    let user_repository = web::Data::new(UserRepository::new(&mongo_client));
+    let redis_pool = db::redis::connect_redis().await;
+    let user_cache = web::Data::new(user_repository::UserRepository::new(redis_pool.clone()));
+    let user_repository = web::Data::new(UserRepository::new(mongo_client.clone()));
 
     env_logger::init_from_env(env_logger::Env::default().default_filter_or("info"));
 
@@ -21,7 +22,7 @@ async fn main() -> std::io::Result<()> {
         HttpServer::new(move || {
             App::new()
                 .wrap(Logger::new("\nIP: %a\nUser-Agent: %{User-Agent}i\nStatusCode: %s\nTotal time(ms): %D"))
-                .app_data(redis_pool.clone())
+                .app_data(user_cache.clone())
                 .app_data(user_repository.clone())
                 .configure(controllers::init)
         })
