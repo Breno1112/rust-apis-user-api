@@ -4,6 +4,7 @@ mod controllers;
 mod config;
 mod db;
 mod domain;
+mod mappers;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
