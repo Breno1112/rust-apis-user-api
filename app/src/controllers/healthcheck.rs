@@ -1,7 +1,7 @@
 use actix_web::{web, get, HttpResponse, Responder};
 
 #[get("/status")]
-pub async fn status() -> impl Responder {
+async fn status() -> impl Responder {
     HttpResponse::Ok().body("OK")
 }
 

@@ -23,8 +23,10 @@ pub async fn create_mongo_client() -> mongodb::Client {
             .ca_file_path(std::path::PathBuf::from(mongodb_cert_path.unwrap()))
             .build())
         );
+        println!("mongodb with tls enabled");
         mongodb::Client::with_options(options).unwrap()
     } else {
+                println!("mongodb with tls disabled");
         mongodb::Client::with_options(options).unwrap()
     }
 }

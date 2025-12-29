@@ -7,9 +7,9 @@ services:
     volumes:
       - certs_data:/certs
 
-  redis-ssl:
+  redis:
     image: redis:8.4.0-alpine
-    container_name: redis-ssl
+    container_name: redis
     ports:
       - "6379:6379"
     volumes:
@@ -27,9 +27,9 @@ services:
       --tls-auth-clients no
     restart: always
 
-  mongodb-tls:
+  mongodb:
     image: mongo:latest
-    container_name: mongodb-tls
+    container_name: mongodb
     volumes:
       - certs_data:/etc/ssl/mongo:ro
     depends_on:
@@ -42,18 +42,19 @@ services:
       mongod --tlsMode requireTLS
       --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem
       --tlsCAFile /etc/ssl/mongo/root-cert.pem
+      --tlsAllowConnectionsWithoutCertificates
     ports:
       - "27017:27017"
-    healthcheck:
-      test: >
-        mongosh --tls 
-        --tlsCAFile /etc/ssl/mongo/root-cert.pem 
-        --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem 
-        --eval "db.adminCommand('ping')"
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+    # healthcheck:
+    #   test: >
+    #     mongosh --tls 
+    #     --tlsCAFile /etc/ssl/mongo/root-cert.pem 
+    #     --tlsCertificateKeyFile /etc/ssl/mongo/mongodb-combined.pem 
+    #     --eval "db.adminCommand('ping')"
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 5
+    #   start_period: 10s
 
   # user-api-release:
   #   build:
