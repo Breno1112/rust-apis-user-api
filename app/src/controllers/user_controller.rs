@@ -1,7 +1,7 @@
-use actix_web::{HttpResponse, Responder, delete, post, web, get};
+use actix_web::{HttpResponse, Responder, delete, get, post, put, web::{self, Json}};
 use mongodb::{Client, bson::doc};
 
-use crate::{domain::{entities::mongodb::user_entity::UserEntity, objects::{request::user::CreateUserRequest, response::common::NotFound}}, mappers::user_mapper::{from_create_user_request_to_user_entity, from_user_entity_to_create_user_response, from_user_entity_to_user_response}};
+use crate::{domain::{entities::mongodb::user_entity::UserEntity, objects::{request::user::{CreateUserRequest, UpdateUserRequest}, response::{common::NotFound, user::{UpdateUserResponse, UserResponse}}}}, mappers::user_mapper::{from_create_user_request_to_user_entity, from_user_entity_to_create_user_response, from_user_entity_to_user_response}};
 
 #[post("")]
 async fn create_user(
@@ -56,7 +56,46 @@ async fn get_user(
             HttpResponse::NotFound().json(NotFound{ message: format!("User {} not found!", id)})
         }
         Err(e) => {
-            println!("Error when deleting user. Error is {}", e.to_string());
+            println!("Error when finding user. Error is {}", e.to_string());
+            HttpResponse::InternalServerError().finish()
+        }
+    }
+}
+
+#[put("/{user_id}")]
+async fn update_user(
+    mongo_client: web::Data<Client>,
+    path: web::Path<String>,
+    payload: Json<UpdateUserRequest>
+) -> impl Responder {
+    let collection = mongo_client.database("fachinis").collection::<UserEntity>("users");
+    let id = path.into_inner();
+    let body = payload.into_inner();
+    let filter = doc! {"_id": &id};
+
+    let update = doc! {
+        "$set": {
+            "name": &body.name,
+            "age": body.age as i32
+        }
+    };
+
+    match collection.update_one(filter, update).await {
+        Ok(result) => {
+            if result.matched_count == 1 {
+                HttpResponse::Ok().json(UpdateUserResponse {
+                    updated_user: UserResponse {
+                        username: id,
+                        name: body.name,
+                        age: body.age
+                    }
+                })
+            } else {
+                HttpResponse::NotFound().json(NotFound{ message: format!("User {} not found!", id)})
+            }
+        }
+        Err(e) => {
+            println!("Error when updating user. Error is {}", e.to_string());
             HttpResponse::InternalServerError().finish()
         }
     }
@@ -68,5 +107,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .service(create_user)
         .service(delete_user)
         .service(get_user)
+        .service(update_user)
     );
 }

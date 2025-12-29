@@ -12,3 +12,8 @@ pub struct UserResponse {
     pub name: String,
     pub age: u8,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateUserResponse {
+    pub updated_user: UserResponse
+}

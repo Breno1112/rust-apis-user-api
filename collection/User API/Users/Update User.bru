@@ -1,0 +1,23 @@
+meta {
+  name: Update User
+  type: http
+  seq: 4
+}
+
+put {
+  url: https://localhost:8081/v1/user/Breno1112
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Breno Fachini",
+    "age": 25
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
