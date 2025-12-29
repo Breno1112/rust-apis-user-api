@@ -26,6 +26,19 @@ services:
       --tls-ca-cert-file /tls/root-cert.pem
       --tls-auth-clients no
     restart: always
+    healthcheck:
+      test: [
+        "CMD", "redis-cli", 
+        "--tls", 
+        "--cacert", "/tls/root-cert.pem", 
+        "--cert", "/tls/redis-cert.pem", 
+        "--key", "/tls/redis-key.pem", 
+        "ping"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   mongodb:
     image: mongo:latest
