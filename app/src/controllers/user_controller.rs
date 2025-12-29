@@ -82,6 +82,7 @@ async fn get_user(
 #[put("/{user_id}")]
 async fn update_user(
     user_repository: web::Data<UserRepository>,
+    user_cache: web::Data<UserCacheRepository>,
     path: web::Path<String>,
     payload: Json<UpdateUserRequest>
 ) -> impl Responder {
@@ -91,6 +92,7 @@ async fn update_user(
     match user_repository.update_by_id(&id, &body).await {
         Ok(updated) => {
             if updated {
+                let _ = user_cache.delete_by_id(&id).await;
                 HttpResponse::Ok().json(UpdateUserResponse {
                     updated_user: UserResponse {
                         username: id,
