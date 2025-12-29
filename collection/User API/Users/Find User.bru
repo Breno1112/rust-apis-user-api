@@ -1,0 +1,16 @@
+meta {
+  name: Find User
+  type: http
+  seq: 3
+}
+
+get {
+  url: https://localhost:8081/v1/user/Breno1113
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
