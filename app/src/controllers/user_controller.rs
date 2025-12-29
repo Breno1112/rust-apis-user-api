@@ -1,26 +1,26 @@
+use std::fmt::format;
+
 use actix_web::{HttpResponse, Responder, delete, get, post, put, web::{self, Json}};
 use deadpool_redis::Pool;
-use mongodb::{Client, bson::doc};
 use redis::AsyncCommands;
 use log::{ info, error };
 
-use crate::{domain::{entities::mongodb::user_entity::UserEntity, objects::{request::user::{CreateUserRequest, UpdateUserRequest}, response::{common::SampleMessage, user::{UpdateUserResponse, UserResponse}}}}, mappers::user_mapper::{from_create_user_request_to_user_entity, from_user_entity_to_create_user_response, from_user_entity_to_user_response}};
+use crate::{db::repositories::mongodb::user_repository::UserRepository, domain::{entities::mongodb::user_entity::UserEntity, exceptions::db::DatabaseExceptionType, objects::{request::user::{CreateUserRequest, UpdateUserRequest}, response::{common::SampleMessage, user::{UpdateUserResponse, UserResponse}}}}, mappers::user_mapper::{from_create_user_request_to_user_entity, from_user_entity_to_create_user_response, from_user_entity_to_user_response}};
 
 #[post("")]
 async fn create_user(
-    mongo_client: web::Data<Client>,
+    user_repository: web::Data<UserRepository>,
     redis_connection_pool: web::Data<Pool>,
     payload: web::Json<CreateUserRequest>
 ) -> impl Responder {
     let user_entity = from_create_user_request_to_user_entity(payload.into_inner());
-    let collection = mongo_client.database("fachinis").collection::<UserEntity>("users");
-    match collection.insert_one(&user_entity).await {
-        Ok(_) => {
+    match user_repository.insert_user(user_entity).await {
+        Ok(new_user_entity) => {
             if let Ok(mut conn) = redis_connection_pool.get().await {
-                if let Ok(serialized_object) = serde_json::to_string(&user_entity) {
-                    match conn.set_ex::<_, _, ()>(&user_entity.username, serialized_object, 60).await {
+                if let Ok(serialized_object) = serde_json::to_string(&new_user_entity) {
+                    match conn.set_ex::<_, _, ()>(&new_user_entity.username, serialized_object, 60).await {
                         Ok(_) => {
-                            info!("User {} updated on redis db", &user_entity.username);
+                            info!("User {} updated on redis db", &new_user_entity.username);
                         }
                         Err(e) => {
                             error!("Error when updating redis cluster: {}", e);
@@ -28,29 +28,34 @@ async fn create_user(
                     }
                 }
             }
-            HttpResponse::Created().json(from_user_entity_to_create_user_response(user_entity))
+            HttpResponse::Created().json(from_user_entity_to_create_user_response(new_user_entity))
         }
-        Err(e) => {
-            error!("Error when inserting user. Error is {}", e.to_string());
-            HttpResponse::InternalServerError().finish()
+        Err(database_exception) => {
+            if database_exception.kind == DatabaseExceptionType::EntityAlreadyExists {
+                HttpResponse::UnprocessableEntity().json(SampleMessage{ message: "User already exists!".to_string()})
+            } else {
+                error!("Error when inserting user. Error is {}", database_exception.message);
+                HttpResponse::InternalServerError().finish()
+            }
         }
     }
 }
 
 #[delete("/{user_id}")]
 async fn delete_user(
-    mongo_client: web::Data<Client>,
+    user_repository: web::Data<UserRepository>,
     path: web::Path<String>
 ) -> impl Responder {
-    let collection = mongo_client.database("fachinis").collection::<UserEntity>("users");
     let id = path.into_inner();
-    let filter = doc! {"_id": id};
-    match collection.delete_one(filter).await {
-        Ok(_) => {
-            HttpResponse::Ok().body("OK")
-        }
-        Err(e) => {
-            error!("Error when deleting user. Error is {}", e.to_string());
+    match user_repository.delete_by_id(&id).await {
+        Ok(deleted) => {
+            if deleted {
+                HttpResponse::Ok().json(SampleMessage{ message: format(format_args!("User {} deleted!", &id.to_string())) })
+            } else {
+                HttpResponse::Ok().json(SampleMessage{ message: format(format_args!("User {} does not exist!", &id.to_string())) })
+            }
+        },
+        Err(_) => {
             HttpResponse::InternalServerError().finish()
         }
     }
@@ -58,11 +63,10 @@ async fn delete_user(
 
 #[get("/{user_id}")]
 async fn get_user(
-    mongo_client: web::Data<Client>,
+    user_repository: web::Data<UserRepository>,
     redis_connection_pool: web::Data<Pool>,
     path: web::Path<String>
 ) -> impl Responder {
-    let collection = mongo_client.database("fachinis").collection::<UserEntity>("users");
     let id = path.into_inner();
 
     if let Ok(mut conn) = redis_connection_pool.get().await {
@@ -81,16 +85,14 @@ async fn get_user(
         }
     }
 
-    let filter = doc! {"_id": &id};
-    match collection.find_one(filter).await {
+    match user_repository.find_by_id(&id).await {
         Ok(Some(user)) => {
             HttpResponse::Ok().json(from_user_entity_to_user_response(user))
         }
         Ok(None) => {
             HttpResponse::NotFound().json(SampleMessage{ message: format!("User {} not found!", id)})
         }
-        Err(e) => {
-            error!("Error when finding user. Error is {}", e.to_string());
+        Err(_) => {
             HttpResponse::InternalServerError().finish()
         }
     }
@@ -98,25 +100,16 @@ async fn get_user(
 
 #[put("/{user_id}")]
 async fn update_user(
-    mongo_client: web::Data<Client>,
+    user_repository: web::Data<UserRepository>,
     path: web::Path<String>,
     payload: Json<UpdateUserRequest>
 ) -> impl Responder {
-    let collection = mongo_client.database("fachinis").collection::<UserEntity>("users");
     let id = path.into_inner();
     let body = payload.into_inner();
-    let filter = doc! {"_id": &id};
-
-    let update = doc! {
-        "$set": {
-            "name": &body.name,
-            "age": body.age as i32
-        }
-    };
-
-    match collection.update_one(filter, update).await {
-        Ok(result) => {
-            if result.matched_count == 1 {
+    
+    match user_repository.update_by_id(&id, &body).await {
+        Ok(updated) => {
+            if updated {
                 HttpResponse::Ok().json(UpdateUserResponse {
                     updated_user: UserResponse {
                         username: id,
@@ -128,8 +121,7 @@ async fn update_user(
                 HttpResponse::NotFound().json(SampleMessage{ message: format!("User {} not found!", id)})
             }
         }
-        Err(e) => {
-            error!("Error when updating user. Error is {}", e.to_string());
+        Err(_) => {
             HttpResponse::InternalServerError().finish()
         }
     }
